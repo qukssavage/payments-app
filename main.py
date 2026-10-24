@@ -1,12 +1,12 @@
-from typing import List
-from fastapi import Depends, FastAPI, HTTPException
+from datetime import date
+from pathlib import Path
+from typing import List, Optional
+
+from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
+
 from database import get_db, init_db
 from schemas import Debtor, Payment, PaymentCreate, Student, StudentCreate, StudentUpdate
-from datetime import date
-from typing import List, Optional
-from fastapi import Depends, FastAPI, HTTPException, Query
-from pathlib import Path
-from fastapi.responses import FileResponse
 
 init_db()
 
@@ -108,7 +108,10 @@ def get_debtors(
 ):
     if month is None:
         month = date.today().strftime("%Y-%m")
-    start, end = month_bounds(month)
+    try:
+        start, end = month_bounds(month)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Некорректный месяц")
 
     rows = db.execute(
         """

@@ -1,7 +1,7 @@
-from typing import Optional
-from pydantic import BaseModel, Field
 from datetime import date
-from pydantic import field_validator
+from typing import Optional
+
+from pydantic import BaseModel, Field, field_validator
 
 PHONE_PATTERN = r"^\+?\d{9,15}$"
 
@@ -10,14 +10,14 @@ class StudentCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     phone: str = Field(pattern=PHONE_PATTERN, examples=["+998901234567"])
     group_name: str = Field(min_length=1, max_length=50)
-    monthly_fee: int = Field(ge=0, description="Месячная сумма в сумах")
+    monthly_fee: int = Field(ge=0, le=1_000_000_000, description="Месячная сумма в сумах")
 
 
 class StudentUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=100)
     phone: Optional[str] = Field(default=None, pattern=PHONE_PATTERN)
     group_name: Optional[str] = Field(default=None, min_length=1, max_length=50)
-    monthly_fee: Optional[int] = Field(default=None, ge=0)
+    monthly_fee: Optional[int] = Field(default=None, ge=0, le=1_000_000_000)
 
 
 class Student(StudentCreate):
@@ -26,7 +26,7 @@ class Student(StudentCreate):
 
 class PaymentCreate(BaseModel):
     student_id: int
-    amount: int = Field(gt=0, description="Сумма в сумах")
+    amount: int = Field(gt=0, le=1_000_000_000, description="Сумма в сумах")
     paid_at: date = Field(default_factory=date.today, description="Если не указана — сегодня")
 
     @field_validator("paid_at")

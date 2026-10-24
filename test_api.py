@@ -89,3 +89,14 @@ def test_delete_student_removes_payments():
     pay(sid, 100000)
     assert client.delete(f"/students/{sid}").status_code == 204
     assert client.get(f"/students/{sid}/payments").status_code == 404
+
+@pytest.mark.parametrize("bad_month", ["0000-01", "9999-12"])
+def test_impossible_year_returns_422(bad_month):
+    assert client.get("/debtors", params={"month": bad_month}).status_code == 422
+
+
+def test_huge_amount_returns_422():
+    r = client.post("/students", json={
+        "name": "X", "phone": "+998901234567", "group_name": "G", "monthly_fee": 10**20,
+    })
+    assert r.status_code == 422
