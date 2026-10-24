@@ -1,0 +1,64 @@
+from typing import List
+
+from fastapi import Depends, FastAPI, HTTPException
+
+from database import get_db, init_db
+from schemas import Student, StudentCreate, StudentUpdate
+
+init_db()
+
+app = FastAPI(title="Учёт оплат учебного центра")
+
+
+def get_student_or_404(db, student_id: int):
+    row = db.execute("SELECT * FROM students WHERE id = ?", (student_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Ученик не найден")
+    return dict(row)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.post("/students", response_model=Student, status_code=201)
+def create_student(data: StudentCreate, db=Depends(get_db)):
+    cur = db.execute(
+        "INSERT INTO students (name, phone, group_name, monthly_fee) VALUES (?, ?, ?, ?)",
+        (data.name, data.phone, data.group_name, data.monthly_fee),
+    )
+    db.commit()
+    return get_student_or_404(db, cur.lastrowid)
+
+
+@app.get("/students", response_model=List[Student])
+def list_students(db=Depends(get_db)):
+    rows = db.execute("SELECT * FROM students ORDER BY id").fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.get("/students/{student_id}", response_model=Student)
+def get_student(student_id: int, db=Depends(get_db)):
+    return get_student_or_404(db, student_id)
+
+
+@app.patch("/students/{student_id}", response_model=Student)
+def update_student(student_id: int, data: StudentUpdate, db=Depends(get_db)):
+    get_student_or_404(db, student_id)
+    fields = data.model_dump(exclude_unset=True, exclude_none=True)
+    if fields:
+        set_clause = ", ".join(f"{key} = ?" for key in fields)
+        db.execute(
+            f"UPDATE students SET {set_clause} WHERE id = ?",
+            (*fields.values(), student_id),
+        )
+        db.commit()
+    return get_student_or_404(db, student_id)
+
+
+@app.delete("/students/{student_id}", status_code=204)
+def delete_student(student_id: int, db=Depends(get_db)):
+    get_student_or_404(db, student_id)
+    db.execute("DELETE FROM students WHERE id = ?", (student_id,))
+    db.commit()
