@@ -10,7 +10,7 @@
 Нужны Python 3.10 или новее и Git.
 
 ```bash
-git clone https://github.com/<ваш-логин>/payments-app.git
+git clone https://github.com/qukssavage/payments-app.git
 cd payments-app
 
 python -m venv .venv
