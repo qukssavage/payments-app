@@ -30,8 +30,9 @@ def health():
 @app.post("/students", response_model=Student, status_code=201)
 def create_student(data: StudentCreate, db=Depends(get_db)):
     cur = db.execute(
-        "INSERT INTO students (name, phone, group_name, monthly_fee) VALUES (?, ?, ?, ?)",
-        (data.name, data.phone, data.group_name, data.monthly_fee),
+        "INSERT INTO students (name, phone, group_name, monthly_fee, created_at) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (data.name, data.phone, data.group_name, data.monthly_fee, date.today().isoformat()),
     )
     db.commit()
     return get_student_or_404(db, cur.lastrowid)
