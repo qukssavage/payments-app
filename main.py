@@ -3,7 +3,7 @@ from typing import List
 from fastapi import Depends, FastAPI, HTTPException
 
 from database import get_db, init_db
-from schemas import Student, StudentCreate, StudentUpdate
+from schemas import Payment, PaymentCreate, Student, StudentCreate, StudentUpdate
 
 init_db()
 
@@ -62,3 +62,24 @@ def delete_student(student_id: int, db=Depends(get_db)):
     get_student_or_404(db, student_id)
     db.execute("DELETE FROM students WHERE id = ?", (student_id,))
     db.commit()
+
+@app.post("/payments", response_model=Payment, status_code=201)
+def create_payment(data: PaymentCreate, db=Depends(get_db)):
+    get_student_or_404(db, data.student_id)
+    cur = db.execute(
+        "INSERT INTO payments (student_id, amount, paid_at) VALUES (?, ?, ?)",
+        (data.student_id, data.amount, data.paid_at.isoformat()),
+    )
+    db.commit()
+    row = db.execute("SELECT * FROM payments WHERE id = ?", (cur.lastrowid,)).fetchone()
+    return dict(row)
+
+
+@app.get("/students/{student_id}/payments", response_model=List[Payment])
+def list_student_payments(student_id: int, db=Depends(get_db)):
+    get_student_or_404(db, student_id)
+    rows = db.execute(
+        "SELECT * FROM payments WHERE student_id = ? ORDER BY paid_at, id",
+        (student_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]

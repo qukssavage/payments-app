@@ -1,5 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel, Field
+from datetime import date
+from pydantic import field_validator
 
 PHONE_PATTERN = r"^\+?\d{9,15}$"
 
@@ -21,3 +23,19 @@ class StudentUpdate(BaseModel):
 class Student(StudentCreate):
     id: int
     created_at: str
+
+class PaymentCreate(BaseModel):
+    student_id: int
+    amount: int = Field(gt=0, description="Сумма в сумах")
+    paid_at: date = Field(default_factory=date.today, description="Если не указана — сегодня")
+
+    @field_validator("paid_at")
+    @classmethod
+    def not_in_future(cls, value: date) -> date:
+        if value > date.today():
+            raise ValueError("Дата оплаты не может быть в будущем")
+        return value
+
+
+class Payment(PaymentCreate):
+    id: int
