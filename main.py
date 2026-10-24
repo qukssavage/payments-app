@@ -1,14 +1,12 @@
 from typing import List
-
 from fastapi import Depends, FastAPI, HTTPException
-
 from database import get_db, init_db
 from schemas import Debtor, Payment, PaymentCreate, Student, StudentCreate, StudentUpdate
-
 from datetime import date
 from typing import List, Optional
-
 from fastapi import Depends, FastAPI, HTTPException, Query
+from pathlib import Path
+from fastapi.responses import FileResponse
 
 init_db()
 
@@ -129,3 +127,10 @@ def get_debtors(
         (start, end, end),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+STATIC_DIR = Path(__file__).parent / "static"
+
+@app.get("/", include_in_schema=False)
+def index():
+    return FileResponse(STATIC_DIR / "index.html")
