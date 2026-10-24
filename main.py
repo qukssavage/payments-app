@@ -3,7 +3,12 @@ from typing import List
 from fastapi import Depends, FastAPI, HTTPException
 
 from database import get_db, init_db
-from schemas import Payment, PaymentCreate, Student, StudentCreate, StudentUpdate
+from schemas import Debtor, Payment, PaymentCreate, Student, StudentCreate, StudentUpdate
+
+from datetime import date
+from typing import List, Optional
+
+from fastapi import Depends, FastAPI, HTTPException, Query
 
 init_db()
 
@@ -81,5 +86,45 @@ def list_student_payments(student_id: int, db=Depends(get_db)):
     rows = db.execute(
         "SELECT * FROM payments WHERE student_id = ? ORDER BY paid_at, id",
         (student_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+def month_bounds(month: str):
+    """'2026-10' -> ('2026-10-01', '2026-11-01'): начало месяца и начало следующего."""
+    year, mon = map(int, month.split("-"))
+    start = date(year, mon, 1)
+    end = date(year + 1, 1, 1) if mon == 12 else date(year, mon + 1, 1)
+    return start.isoformat(), end.isoformat()
+
+
+@app.get("/debtors", response_model=List[Debtor])
+def get_debtors(
+    month: Optional[str] = Query(
+        default=None,
+        pattern=r"^\d{4}-(0[1-9]|1[0-2])$",
+        description="Месяц в формате YYYY-MM. По умолчанию текущий.",
+        examples=["2026-10"],
+    ),
+    db=Depends(get_db),
+):
+    if month is None:
+        month = date.today().strftime("%Y-%m")
+    start, end = month_bounds(month)
+
+    rows = db.execute(
+        """
+        SELECT s.id, s.name, s.phone, s.group_name, s.monthly_fee,
+               COALESCE(SUM(p.amount), 0)                 AS paid,
+               s.monthly_fee - COALESCE(SUM(p.amount), 0) AS debt
+        FROM students s
+        LEFT JOIN payments p
+               ON p.student_id = s.id
+              AND p.paid_at >= ? AND p.paid_at < ?   -- фильтр в ON, а не в WHERE!
+        WHERE s.created_at < ?                       -- ученик уже был в этом месяце
+        GROUP BY s.id
+        HAVING debt > 0
+        ORDER BY debt DESC, s.name
+        """,
+        (start, end, end),
     ).fetchall()
     return [dict(r) for r in rows]

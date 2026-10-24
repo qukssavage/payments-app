@@ -39,3 +39,12 @@ class PaymentCreate(BaseModel):
 
 class Payment(PaymentCreate):
     id: int
+
+class Debtor(BaseModel):
+    id: int
+    name: str
+    phone: str
+    group_name: str
+    monthly_fee: int
+    paid: int
+    debt: int
